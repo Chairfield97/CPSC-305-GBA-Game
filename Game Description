@@ -1,0 +1,13 @@
+Connor Hairfield, Tamarcus Daniel, Kaeleen Johnson
+CPSC 305
+11/7/23
+GBA Game Description
+
+Our game, simply titled “Metroid”, will aim to mimic the popular Nintendo franchise. Players will play as none other than Samus Aran as she explores the cavernous depths of SR388 on a mission to rid the galaxy of all remaining Metroid. 
+
+While exploring, players will have to eliminate a certain number of enemies to progress. There will be at least two enemy types to deal with. One will be a melee-based enemy that patrols the base layer of the tile map. 
+The other will have a ranged attack and will likely be adhered to the ceiling attacking the player from above. If time permits, there will be a final boss that appears once the player eliminates the other enemies. 
+This boss may have both a ranged and melee attack and will be invulnerable to standard player attacks.
+
+To deal with these enemies, players will utilize Samus’ arm cannon which will have a standard blaster attack and a secondary missile attack. The standard attack will have infinite capacity while the secondary attack will have a finite amount. 
+Players can replenish their missile capacity by picking up missile sprites throughout the map. The player wins the game when all enemies have been eliminated.
