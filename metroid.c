@@ -339,7 +339,7 @@ void setup_sprite_image() {
     memcpy16_dma((unsigned short*) sprite_image_memory, (unsigned short*) gba_sprites_data, (gba_sprites_width * gba_sprites_height) / 2);
 }
 
-/* a struct for the koopa's logic and behavior */
+/* a struct for Samus' logic and behavior */
 struct Samus {
     /* the actual sprite attribute info */
     struct Sprite* sprite;
@@ -347,10 +347,10 @@ struct Samus {
     /* the x and y postion in pixels */
     int x, y;
 
-    /* the koopa's y velocity in 1/256 pixels/second */
+    /* Samus' y velocity in 1/256 pixels/second */
     int yvel;
 
-    /* the koopa's y acceleration in 1/256 pixels/second^2 */
+    /* Samus' y acceleration in 1/256 pixels/second^2 */
     int gravity; 
 
     /* which frame of the animation he is on */
@@ -362,17 +362,17 @@ struct Samus {
     /* the animation counter counts how many frames until we flip */
     int counter;
 
-    /* whether the koopa is moving right now or not */
+    /* whether Samus is moving right now or not */
     int move;
 
-    /* the number of pixels away from the edge of the screen the koopa stays */
+    /* the number of pixels away from the edge of the screen Samus stays */
     int border;
 
-    /* if the koopa is currently falling */
+    /* if Samus is currently falling */
     int falling;
 };
 
-/* initialize the koopa */
+/* initialize Samus */
 void samus_init(struct Samus* samus) {
     samus->x = 50;
     samus->y = 113;
@@ -387,7 +387,7 @@ void samus_init(struct Samus* samus) {
     samus->sprite = sprite_init(samus->x, samus->y, SIZE_16_32, 0, 0, samus->frame, 0);
 }
 
-/* move the koopa left or right returns if it is at edge of the screen */
+/* move Samus left or right returns if it is at edge of the screen */
 int samus_left(struct Samus* samus) {
     /* face left */
     sprite_set_horizontal_flip(samus->sprite, 1);
@@ -417,7 +417,7 @@ int samus_right(struct Samus* samus) {
     }
 }
 
-/* stop the koopa from walking left/right */
+/* stop Samus from walking left/right */
 void samus_stop(struct Samus* samus) {
     samus->move = 0;
     samus->frame = 0;
@@ -425,7 +425,7 @@ void samus_stop(struct Samus* samus) {
     sprite_set_offset(samus->sprite, samus->frame);
 }
 
-/* start the koopa jumping, unless already fgalling */
+/* start Samus jumping, unless already falling */
 void samus_jump(struct Samus* samus) {
     if (!samus->falling) {
         samus->yvel = -1350;
@@ -489,7 +489,7 @@ unsigned short tile_lookup(int x, int y, int xscroll, int yscroll,
     return tilemap[index + offset];
 }
 
-/* update the koopa */
+/* update Samus */
 void samus_update(struct Samus* samus, int xscroll) {
     /* update  y position and speed if falling */
     if (samus->falling) {
@@ -497,13 +497,14 @@ void samus_update(struct Samus* samus, int xscroll) {
         samus->yvel += samus->gravity;
     }
 
-    /* check which tile the koopa's feet are over */
-    unsigned short tile = tile_lookup(samus->x + 8, samus->y + 32, xscroll, 0, map,
-            map_width, map_height);
+    /* check which tile Samus' feet are over */
+    unsigned short tile = tile_lookup(samus->x + 8, samus->y + 32, xscroll, 0, map1,
+            map1_width, map1_height);
 
     /* if it's block tile
      * these numbers refer to the tile indices of the blocks the koopa can walk on */
-    if ((tile >= 1 && tile <= 18)/* || 
+    
+    if ((tile >= 540 && tile <= 569 )/* || 
             (tile >= 12 && tile <= 17)*/) {
         /* stop the fall! */
         samus->falling = 0;
