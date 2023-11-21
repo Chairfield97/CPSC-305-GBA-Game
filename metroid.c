@@ -495,7 +495,7 @@ void samus_update(struct Samus* samus, int xscroll) {
     if (samus->falling) {
         samus->y += (samus->yvel >> 8);
         samus->yvel += samus->gravity;
-    }
+   }
 
     /* check which tile Samus' feet are over */
     unsigned short tile = tile_lookup(samus->x + 8, samus->y + 32, xscroll, 0, map1,
@@ -504,8 +504,7 @@ void samus_update(struct Samus* samus, int xscroll) {
     /* if it's block tile
      * these numbers refer to the tile indices of the blocks the koopa can walk on */
     
-    if ((tile >= 540 && tile <= 569 )/* || 
-            (tile >= 12 && tile <= 17)*/) {
+    if ((tile >= 540 && tile <= 551) || (tile >= 556 && tile <= 569)) {
         /* stop the fall! */
         samus->falling = 0;
         samus->yvel = 0;
@@ -528,7 +527,7 @@ void samus_update(struct Samus* samus, int xscroll) {
         samus->counter++;
         if (samus->counter >= samus->animation_delay) {
             samus->frame = samus->frame + 16;
-            if (samus->frame > 16) {
+            if (samus->frame > 32) {
                 samus->frame = 0;
             }
             sprite_set_offset(samus->sprite, samus->frame);
@@ -565,7 +564,7 @@ int main() {
     /* loop forever */
     while (1) {
         /* update the koopa */
-        samus_update(&samus, xscroll);
+        samus_update(&samus, xxscroll);
 
         /* now the arrow keys move the koopa */
         if (button_pressed(BUTTON_RIGHT)) {
