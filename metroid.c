@@ -1,5 +1,5 @@
 /*
- * collide.c
+ * metroid.c
  * program which demonstrates sprites colliding with tiles
  */
 
@@ -420,7 +420,9 @@ int samus_right(struct Samus* samus) {
 /* stop Samus from walking left/right */
 void samus_stop(struct Samus* samus) {
     samus->move = 0;
-    samus->frame = 0;
+    if (!samus->falling) {
+        samus->frame = 0;
+    }
     samus->counter = 7;
     sprite_set_offset(samus->sprite, samus->frame);
 }
@@ -428,7 +430,7 @@ void samus_stop(struct Samus* samus) {
 /* start Samus jumping, unless already falling */
 void samus_jump(struct Samus* samus) {
     if (!samus->falling) {
-        samus->yvel = -1350;
+        samus->yvel = -1000;
         samus->falling = 1;
     }
 }
@@ -508,6 +510,7 @@ void samus_update(struct Samus* samus, int xscroll) {
         /* stop the fall! */
         samus->falling = 0;
         samus->yvel = 0;
+        
 
         /* make her line up with the top of a block works by clearing out the lower bits to 0 */
         samus->y &= ~0x3;
@@ -517,18 +520,20 @@ void samus_update(struct Samus* samus, int xscroll) {
 
     } else {
         /* she is falling now */
-        samus->falling = 1;
-        
+        samus->falling = 1;        
     }
 
-
     /* update animation if moving */
-    if (samus->move) {
+
+    if (samus->falling) {
+            samus->frame = 48;
+    } else if (samus->move) {
         samus->counter++;
+        
         if (samus->counter >= samus->animation_delay) {
             samus->frame = samus->frame + 16;
             if (samus->frame > 32) {
-                samus->frame = 0;
+                samus->frame = 16;
             }
             sprite_set_offset(samus->sprite, samus->frame);
             samus->counter = 0;
@@ -563,7 +568,7 @@ int main() {
 
     /* loop forever */
     while (1) {
-        /* update the koopa */
+        /* update Samus */
         samus_update(&samus, xxscroll);
 
         /* now the arrow keys move the koopa */
