@@ -420,7 +420,9 @@ int samus_right(struct Samus* samus) {
 /* stop Samus from walking left/right */
 void samus_stop(struct Samus* samus) {
     samus->move = 0;
-    if (!samus->falling) {
+    if (samus->falling) {
+        samus->frame = 48;
+    } else {
         samus->frame = 0;
     }
     samus->counter = 7;
@@ -432,6 +434,8 @@ void samus_jump(struct Samus* samus) {
     if (!samus->falling) {
         samus->yvel = -1000;
         samus->falling = 1;
+        samus->frame = 48;
+        sprite_set_offset(samus->sprite, samus->frame);
     }
 }
 
@@ -508,7 +512,9 @@ void samus_update(struct Samus* samus, int xscroll) {
     
     if ((tile >= 540 && tile <= 551) || (tile >= 556 && tile <= 569)) {
         /* stop the fall! */
-        samus->falling = 0;
+        if(samus->falling) {
+            samus->falling = 0;
+        }
         samus->yvel = 0;
         
 
@@ -524,13 +530,13 @@ void samus_update(struct Samus* samus, int xscroll) {
     }
 
     /* update animation if moving */
-
-    if (samus->falling) {
-            samus->frame = 48;
-    } else if (samus->move) {
+    
+    if (samus->move) {
         samus->counter++;
-        
-        if (samus->counter >= samus->animation_delay) {
+        if (samus->falling) {
+            samus->frame = 48;
+
+        } else if (samus->counter >= samus->animation_delay) {
             samus->frame = samus->frame + 16;
             if (samus->frame > 32) {
                 samus->frame = 16;
@@ -538,10 +544,17 @@ void samus_update(struct Samus* samus, int xscroll) {
             sprite_set_offset(samus->sprite, samus->frame);
             samus->counter = 0;
         }
-    }
+    } 
 
     /* set on screen position */
     sprite_position(samus->sprite, samus->x, samus->y);
+}
+
+void samus_falling(struct Samus* samus) {
+    if (samus->falling) {
+        samus->frame = 48;
+        sprite_set_offset(samus->sprite, samus->frame);
+    }
 }
 
 /* the main function */
@@ -569,6 +582,7 @@ int main() {
     /* loop forever */
     while (1) {
         /* update Samus */
+        
         samus_update(&samus, xxscroll);
 
         /* now the arrow keys move the koopa */
@@ -577,11 +591,13 @@ int main() {
                 xscroll++;
                 xxscroll += 2;
             }
+            
         } else if (button_pressed(BUTTON_LEFT)) {
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
             }
+            
         } else {
             samus_stop(&samus);
         }
@@ -590,13 +606,14 @@ int main() {
         if (button_pressed(BUTTON_A)) {
             samus_jump(&samus);
         }
-
+        
+        samus_falling(&samus);
         /* wait for vblank before scrolling and moving sprites */
         wait_vblank();
         *bg0_x_scroll = xscroll;
         *bg1_x_scroll = xxscroll;
         sprite_update_all();
-
+        
         /* delay some */
         delay(300);
     }
