@@ -372,6 +372,38 @@ struct Samus {
     int falling;
 };
 
+/*Struct for roof enemy*/
+struct Enemy1 {
+    struct Sprite* sprite;
+    int x;
+    int y;
+    int frame;
+};
+
+/*Struct for ground enemy*/
+struct Enemy2 {
+    struct Sprite* sprite;
+    int x;
+    int y;
+    int frame;
+};
+
+/*Initialize Roof Enemy*/
+void enemy1_init(struct Enemy1* enemy) {
+    enemy->x = 164;
+    enemy->y = 0;
+    enemy->frame = 80;
+    enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy-    >frame, 0);
+}
+
+/*Initialize Ground Enemy*/
+void enemy2_init(struct Enemy2* enemy2) {
+    enemy2->x = 200;
+    enemy2->y = 119;
+    enemy2->frame = 112;
+    enemy2->sprite = sprite_init(enemy2->x, enemy2->y, SIZE_16_32, 0, 0, ene    my2->frame, 0);
+}
+
 /* initialize Samus */
 void samus_init(struct Samus* samus) {
     samus->x = 50;
@@ -574,6 +606,10 @@ int main() {
     /* create the koopa */
     struct Samus samus;
     samus_init(&samus);
+    struct Enemy1 enemy1;
+    enemy1_init(&enemy1);
+    struct Enemy2 enemy2;
+    enemy2_init(&enemy2);
 
     /* set initial scroll to 0 */
     int xscroll = 0;
