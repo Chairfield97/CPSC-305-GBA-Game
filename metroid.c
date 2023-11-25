@@ -372,16 +372,8 @@ struct Samus {
     int falling;
 };
 
-/*Struct for roof enemy*/
-struct Enemy1 {
-    struct Sprite* sprite;
-    int x;
-    int y;
-    int frame;
-};
-
-/*Struct for ground enemy*/
-struct Enemy2 {
+/*Struct for enemy*/
+struct Enemy {
     struct Sprite* sprite;
     int x;
     int y;
@@ -389,15 +381,15 @@ struct Enemy2 {
 };
 
 /*Initialize Roof Enemy*/
-void enemy1_init(struct Enemy1* enemy) {
-    enemy->x = 164;
-    enemy->y = 0;
-    enemy->frame = 80;
+void enemy1_init(struct Enemy* enemy) {
+    enemy->x = 144;
+    enemy->y = 1;
+    enemy->frame = 84;
     enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
 }
 
 /*Initialize Ground Enemy*/
-void enemy2_init(struct Enemy2* enemy2) {
+void enemy2_init(struct Enemy* enemy2) {
     enemy2->x = 200;
     enemy2->y = 119;
     enemy2->frame = 112;
@@ -595,6 +587,11 @@ void samus_falling(struct Samus* samus) {
     }
 }
 
+void enemy_move(struct Enemy* enemy, int xscroll) {
+    enemy->x += xscroll;
+    sprite_position(enemy->sprite, enemy->x, enemy->y);
+}
+
 /* the main function */
 int main() {
     /* we set the mode to mode 0 with bg0 on */
@@ -612,9 +609,9 @@ int main() {
     /* create the koopa */
     struct Samus samus;
     samus_init(&samus);
-    struct Enemy1 enemy1;
+    struct Enemy enemy1;
     enemy1_init(&enemy1);
-    struct Enemy2 enemy2;
+    struct Enemy enemy2;
     enemy2_init(&enemy2);
 
     /* set initial scroll to 0 */
@@ -632,12 +629,16 @@ int main() {
             if (samus_right(&samus)) {
                 xscroll++;
                 xxscroll += 2;
+                enemy_move(&enemy1, -2);
+                enemy_move(&enemy2, -2);
             }
             
         } else if (button_pressed(BUTTON_LEFT)) {
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
+                enemy_move(&enemy1, 2);
+                enemy_move(&enemy2, 2);
             }
             
         } else {
