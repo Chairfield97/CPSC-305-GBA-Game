@@ -380,20 +380,12 @@ struct Enemy {
     int frame;
 };
 
-/*Initialize Roof Enemy*/
-void enemy1_init(struct Enemy* enemy) {
-    enemy->x = 144;
-    enemy->y = 1;
-    enemy->frame = 84;
+/* initialize enemy sprites */
+void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
+    enemy->x = x;
+    enemy->y = y;
+    enemy->frame = frame;
     enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
-}
-
-/*Initialize Ground Enemy*/
-void enemy2_init(struct Enemy* enemy2) {
-    enemy2->x = 200;
-    enemy2->y = 119;
-    enemy2->frame = 112;
-    enemy2->sprite = sprite_init(enemy2->x, enemy2->y, SIZE_16_32, 0, 0, enemy2->frame, 0);
 }
 
 /* initialize Samus */
@@ -609,10 +601,18 @@ int main() {
     /* create the koopa */
     struct Samus samus;
     samus_init(&samus);
-    struct Enemy enemy1;
-    enemy1_init(&enemy1);
-    struct Enemy enemy2;
-    enemy2_init(&enemy2);
+    struct Enemy zeela;
+    enemy_init(&zeela, 144, 1, 84);
+    struct Enemy zeela2;
+    enemy_init(&zeela2, 405, 1, 84);
+    struct Enemy zombie;
+    enemy_init(&zombie, 200, 119, 112);
+    struct Enemy zombie2;
+    enemy_init(&zombie2, 460, 119, 112);
+    struct Enemy metroid;
+    enemy_init(&metroid, 485, 48, 144);
+    struct Enemy metroid2;
+    enemy_init(&metroid2, 225, 48, 144);
 
     /* set initial scroll to 0 */
     int xscroll = 0;
@@ -629,17 +629,25 @@ int main() {
             if (samus_right(&samus)) {
                 xscroll++;
                 xxscroll += 2;
-                enemy_move(&enemy1, -2);
-                enemy_move(&enemy2, -2);
+                enemy_move(&zeela, -2);
+                enemy_move(&zombie, -2);
+                enemy_move(&metroid, -2);
+                enemy_move(&zeela2, -2);
+                enemy_move(&zombie2, -2);
+                enemy_move(&metroid2, -2);
             }
             
         } else if (button_pressed(BUTTON_LEFT)) {
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
-                enemy_move(&enemy1, 2);
-                enemy_move(&enemy2, 2);
-            }
+                enemy_move(&zeela, 2);
+                enemy_move(&zombie, 2);
+                enemy_move(&metroid, 2);
+                enemy_move(&zeela2, 2);
+                enemy_move(&zombie2, 2);
+                enemy_move(&metroid2, 2);
+           }
             
         } else {
             samus_stop(&samus);
