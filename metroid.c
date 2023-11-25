@@ -393,7 +393,7 @@ void enemy1_init(struct Enemy1* enemy) {
     enemy->x = 164;
     enemy->y = 0;
     enemy->frame = 80;
-    enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy-    >frame, 0);
+    enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
 }
 
 /*Initialize Ground Enemy*/
@@ -401,7 +401,7 @@ void enemy2_init(struct Enemy2* enemy2) {
     enemy2->x = 200;
     enemy2->y = 119;
     enemy2->frame = 112;
-    enemy2->sprite = sprite_init(enemy2->x, enemy2->y, SIZE_16_32, 0, 0, ene    my2->frame, 0);
+    enemy2->sprite = sprite_init(enemy2->x, enemy2->y, SIZE_16_32, 0, 0, enemy2->frame, 0);
 }
 
 /* initialize Samus */
@@ -576,7 +576,13 @@ void samus_update(struct Samus* samus, int xscroll) {
             sprite_set_offset(samus->sprite, samus->frame);
             samus->counter = 0;
         }
-    } 
+        if (!samus->falling) {
+            samus->y++;
+        }
+        
+    } else if(!samus->falling) {
+        samus->y--;
+    }
 
     /* set on screen position */
     sprite_position(samus->sprite, samus->x, samus->y);
