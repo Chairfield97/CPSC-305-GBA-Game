@@ -17,6 +17,14 @@
 #include "map1.h"
 //#include "map2.h"
 
+/*startup screen*/
+#include "GBA_Metroid_Title_Screen.h"
+#include "GbaTitleScreenFinal.h"
+
+/**Assembly function declaration*/
+int calc_offset(int offset, int tileWidth);
+ 
+
 /* the tile mode flags needed for display control register */
 #define MODE0 0x00
 #define BG0_ENABLE 0x100
@@ -169,6 +177,37 @@ void setup_background() {
     memcpy16_dma((unsigned short*) screen_block(16), (unsigned short*) map, map_width * map_height);
     memcpy16_dma((unsigned short*) screen_block(24), (unsigned short*) map1, map1_width * map1_height);
 }
+
+// ********KAELEEN START***** //
+/* function for title background*/
+/* function to setup background 0 for this program */
+void setup_title_background() {
+
+    /* load the palette from the image into palette memory*/
+    memcpy16_dma((unsigned short*) bg_palette, (unsigned short*) GBA_Metroid_Title_Screen_palette, PALETTE_SIZE);
+
+    /* load the image into char block 0 */
+    memcpy16_dma((unsigned short*) char_block(0), (unsigned short*) GBA_Metroid_Title_Screen_data,
+            (GBA_Metroid_Title_Screen_width * GBA_Metroid_Title_Screen_height) / 2);
+
+    /* set all control the bits in this register */
+    *bg0_control = 1 |    /* priority, 0 is highest, 3 is lowest */
+        (0 << 2)  |       /* the char block the image data is stored in */
+        (0 << 6)  |       /* the mosaic flag */
+        (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
+        (16 << 8) |       /* the screen block the tile data is stored in */
+        (1 << 13) |       /* wrapping flag */
+        (0 << 14);        /* bg size, 0 is 256x256 */
+
+    
+
+    /* load the tile data into screen block 16 */
+    /* MAY HAVE TO CHANGE MAP NAME*/
+    memcpy16_dma((unsigned short*) screen_block(16), (unsigned short*) GbaTitleScreenFinal, GbaTitleScreenFinal_width * GbaTitleScreenFinal_height);
+}
+// ********KAELEEN STOP**** //
+
+
 
 /* just kill time */
 void delay(unsigned int amount) {
@@ -539,12 +578,14 @@ unsigned short tile_lookup(int x, int y, int xscroll, int yscroll,
     if (tilemap_h == 64 && y >= 32) {
         y -= 32;
 
+        /*call the assembly function for the code that is commented out below*/
+        offset= calc_offset(offset, tilemap_w);
         /* if width is also 64 add 0x800, else just 0x400 */
-        if (tilemap_w == 64) {
+       /* if (tilemap_w == 64) {
             offset += 0x800;
         } else {
             offset += 0x400;
-        }
+        }*/
     }
 
     /* find the index in this tile map */
@@ -675,6 +716,33 @@ void projectile_update(struct Projectile* projectile, struct Samus* samus) {
 
 /* the main function */
 int main() {
+	// ********KAELEEN START***** //
+
+	/*FOR TITLE SCREEN*/
+	/* we set the mode to mode 0 with bg0 on */
+    *display_control = MODE0 | BG0_ENABLE;
+
+    /*FOR TITLE SCREEN*/
+    /* setup the background 0 */
+    setup_title_background();
+    /*forever loop for tile screen until 'A' is hit to start game*/
+    while(1){
+    	/* if A is pressed, break and go to game play */
+        if (button_pressed(BUTTON_A)) {
+            break;
+        }
+        /* wait for vblank */
+        wait_vblank();
+        
+        /* delay some */
+        delay(300);
+    }
+    // ********KAELEEN STOP***** //
+
+    
+    
+    
+    
     /* we set the mode to mode 0 with bg0 on */
     *display_control = MODE0 | BG0_ENABLE | BG1_ENABLE | SPRITE_ENABLE | SPRITE_MAP_1D;
 
