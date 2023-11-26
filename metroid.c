@@ -370,14 +370,28 @@ struct Samus {
 
     /* if Samus is currently falling */
     int falling;
+
+    /* if Samus is facing backwards or not */ 
+    int facing;
 };
 
-/*Struct for enemy*/
+/* Struct for enemy */
 struct Enemy {
     struct Sprite* sprite;
     int x;
     int y;
     int frame;
+};
+
+/* struct for projectile */
+struct Projectile {
+    struct Sprite* sprite;
+    int x;
+    int dx;
+    int y;
+    int frame;
+    int count;
+    int alive;
 };
 
 /* initialize enemy sprites */
@@ -386,6 +400,27 @@ void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
     enemy->y = y;
     enemy->frame = frame;
     enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
+}
+
+/* initialize projectile sprite */
+void projectile_init(struct Projectile* projectile, struct Samus* samus, int frame) {
+    
+    projectile->y = samus->y;
+    projectile->frame = frame;
+    projectile->alive = 1;
+    if (samus->facing) {
+        projectile->x = samus->x - 8;
+        projectile->dx = -2;
+        sprite_set_horizontal_flip(projectile->sprite, 1);
+    } else {
+        projectile->x = samus->x + 8;
+        projectile->dx = 2;
+        sprite_set_horizontal_flip(projectile->sprite, 0);
+    }
+    if (projectile->count < 1) {
+        projectile->count++;
+        projectile->sprite = sprite_init(projectile->x, projectile->y, SIZE_16_32, 0, 0, projectile->frame, 0);
+    }
 }
 
 /* initialize Samus */
@@ -399,6 +434,7 @@ void samus_init(struct Samus* samus) {
     samus->move = 0;
     samus->counter = 0;
     samus->falling = 0;
+    samus->facing = 0;
     samus->animation_delay = 8;
     samus->sprite = sprite_init(samus->x, samus->y, SIZE_16_32, 0, 0, samus->frame, 0);
 }
@@ -408,6 +444,9 @@ int samus_left(struct Samus* samus) {
     /* face left */
     sprite_set_horizontal_flip(samus->sprite, 1);
     samus->move = 1;
+    
+    /* to flip projectile */
+    samus->facing = 1;
 
     /* if we are at the left end, just scroll the screen */
     if (samus->x < samus->border) {
@@ -418,10 +457,14 @@ int samus_left(struct Samus* samus) {
         return 0;
     }
 }
+
 int samus_right(struct Samus* samus) {
     /* face right */
     sprite_set_horizontal_flip(samus->sprite, 0);
     samus->move = 1;
+
+    /* to flip projectile */
+    samus->facing = 0;
 
     /* if we are at the right end, just scroll the screen */
     if (samus->x > (SCREEN_WIDTH - 16 - samus->border)) {
@@ -579,9 +622,55 @@ void samus_falling(struct Samus* samus) {
     }
 }
 
-void enemy_move(struct Enemy* enemy, int xscroll) {
-    enemy->x += xscroll;
-    sprite_position(enemy->sprite, enemy->x, enemy->y);
+void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3, struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6, int xscroll) {
+    enemy1->x += xscroll;
+    sprite_position(enemy1->sprite, enemy1->x, enemy1->y);
+    
+    enemy2->x += xscroll;
+    sprite_position(enemy2->sprite, enemy2->x, enemy2->y);
+
+    enemy3->x += xscroll;
+    sprite_position(enemy3->sprite, enemy3->x, enemy3->y);
+
+    enemy4->x += xscroll;
+    sprite_position(enemy4->sprite, enemy4->x, enemy4->y);
+
+    enemy5->x += xscroll;
+    sprite_position(enemy5->sprite, enemy5->x, enemy5->y);
+
+    enemy6->x += xscroll;
+    sprite_position(enemy6->sprite, enemy6->x, enemy6->y);
+} 
+
+void projectile_update(struct Projectile* projectile, struct Samus* samus) {
+    if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
+        
+        if (samus->facing) {
+            projectile->x = samus->x - 4;     
+        } else {
+            projectile->x = samus->x + 4;
+        }
+        
+        projectile->alive = 0;
+        projectile->y = samus->y;
+        projectile->dx = 0;
+        sprite_position(projectile->sprite, projectile->x, projectile->y);
+        
+    } else if (projectile->alive) {
+        projectile->x += projectile->dx;
+        sprite_position(projectile->sprite, projectile->x, projectile->y);
+    
+    } else {
+         if (samus->facing) {
+            projectile->x = samus->x - 4;     
+        } else {
+            projectile->x = samus->x + 4;
+        }
+        
+        projectile->y = samus->y;
+        sprite_position(projectile->sprite, projectile->x, projectile->y);
+        
+    }
 }
 
 /* the main function */
@@ -601,6 +690,7 @@ int main() {
     /* create the koopa */
     struct Samus samus;
     samus_init(&samus);
+    struct Projectile projectile;
     struct Enemy zeela;
     enemy_init(&zeela, 144, 1, 84);
     struct Enemy zeela2;
@@ -621,36 +711,33 @@ int main() {
     /* loop forever */
     while (1) {
         /* update Samus */
-        
         samus_update(&samus, xxscroll);
+        /* update projectile */
+        projectile_update(&projectile, &samus);
 
         /* now the arrow keys move the koopa */
         if (button_pressed(BUTTON_RIGHT)) {
             if (samus_right(&samus)) {
                 xscroll++;
                 xxscroll += 2;
-                enemy_move(&zeela, -2);
-                enemy_move(&zombie, -2);
-                enemy_move(&metroid, -2);
-                enemy_move(&zeela2, -2);
-                enemy_move(&zombie2, -2);
-                enemy_move(&metroid2, -2);
+                enemy_move(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2, -2);
             }
             
         } else if (button_pressed(BUTTON_LEFT)) {
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
-                enemy_move(&zeela, 2);
-                enemy_move(&zombie, 2);
-                enemy_move(&metroid, 2);
-                enemy_move(&zeela2, 2);
-                enemy_move(&zombie2, 2);
-                enemy_move(&metroid2, 2);
+                enemy_move(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2, 2);
+            
            }
             
         } else {
             samus_stop(&samus);
+        }
+
+        /* check for blaster */
+        if (button_pressed(BUTTON_B)) {
+             projectile_init(&projectile, &samus, 64);
         }
 
         /* check for jumping */
