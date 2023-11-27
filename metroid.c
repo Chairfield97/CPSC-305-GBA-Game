@@ -2,6 +2,7 @@
  * metroid.c
  * program which demonstrates sprites colliding with tiles
  */
+ #include <stdio.h>
 
 #define SCREEN_WIDTH 240
 #define SCREEN_HEIGHT 160
@@ -21,8 +22,22 @@
 #include "GBA_Metroid_Title_Screen.h"
 #include "GbaTitleScreenFinal.h"
 
+/*mission complete screen*/
+#include "MissionCompleteScreen.h"
+#include "MissionCompleteMap.h"
+
+/* Score background*/
+#include "score_background.h"
+/* using a manual map so text can be updated(the original tile map was a const)*/
+unsigned short TextMap [32*32];
+
+
 /**Assembly function declaration*/
 int calc_offset(int offset, int tileWidth);
+
+/*Hits and Lives*/
+int currentHits=0;
+int currentLives=3;
  
 
 /* the tile mode flags needed for display control register */
@@ -30,6 +45,8 @@ int calc_offset(int offset, int tileWidth);
 #define BG0_ENABLE 0x100
 #define BG1_ENABLE 0x200
 #define BG2_ENABLE 0x400
+#define BG3_ENABLE 0x800
+
 
 /* flags to set sprite handling in display control register */
 #define SPRITE_MAP_2D 0x0
@@ -41,6 +58,8 @@ int calc_offset(int offset, int tileWidth);
 volatile unsigned short* bg0_control = (volatile unsigned short*) 0x4000008;
 volatile unsigned short* bg1_control = (volatile unsigned short*) 0x400000a;
 volatile unsigned short* bg2_control = (volatile unsigned short*) 0x400000c;
+volatile unsigned short* bg3_control = (volatile unsigned short*) 0x400000e;
+
 
 /* palette is always 256 colors */
 #define PALETTE_SIZE 256
@@ -157,28 +176,27 @@ void setup_background() {
             (background_width * background_height) / 2);
 
     /* set all control the bits in this register */
-    *bg0_control = 1 |    /* priority, 0 is highest, 3 is lowest */
+    *bg0_control = 2 |    /* priority, 0 is highest, 3 is lowest */
         (0 << 2)  |       /* the char block the image data is stored in */
         (0 << 6)  |       /* the mosaic flag */
         (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
-        (16 << 8) |       /* the screen block the tile data is stored in */
+        (21 << 8) |       /* the screen block the tile data is stored in */
         (1 << 13) |       /* wrapping flag */
         (0 << 14);        /* bg size, 0 is 256x256 */
 
-    *bg1_control = 0 |
+    *bg1_control = 1 |
         (0 << 2)  |
         (0 << 6)  |
         (1 << 7)  |
-        (24 << 8) |
+        (22 << 8) |
         (1 << 13) |
         (0 << 14);
 
     /* load the tile data into screen block 16 */
-    memcpy16_dma((unsigned short*) screen_block(16), (unsigned short*) map, map_width * map_height);
-    memcpy16_dma((unsigned short*) screen_block(24), (unsigned short*) map1, map1_width * map1_height);
+    memcpy16_dma((unsigned short*) screen_block(21), (unsigned short*) map, map_width * map_height);
+    memcpy16_dma((unsigned short*) screen_block(22), (unsigned short*) map1, map1_width * map1_height);
 }
 
-// ********KAELEEN START***** //
 /* function for title background*/
 /* function to setup background 0 for this program */
 void setup_title_background() {
@@ -195,7 +213,7 @@ void setup_title_background() {
         (0 << 2)  |       /* the char block the image data is stored in */
         (0 << 6)  |       /* the mosaic flag */
         (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
-        (16 << 8) |       /* the screen block the tile data is stored in */
+        (30 << 8) |       /* the screen block the tile data is stored in */
         (1 << 13) |       /* wrapping flag */
         (0 << 14);        /* bg size, 0 is 256x256 */
 
@@ -203,9 +221,87 @@ void setup_title_background() {
 
     /* load the tile data into screen block 16 */
     /* MAY HAVE TO CHANGE MAP NAME*/
-    memcpy16_dma((unsigned short*) screen_block(16), (unsigned short*) GbaTitleScreenFinal, GbaTitleScreenFinal_width * GbaTitleScreenFinal_height);
+    memcpy16_dma((unsigned short*) screen_block(30), (unsigned short*) GbaTitleScreenFinal, GbaTitleScreenFinal_width * GbaTitleScreenFinal_height);
 }
-// ********KAELEEN STOP**** //
+/* function for mission complete background*/
+/* function to setup background 0 for this program */
+void setup_complete_background() {
+
+    /* load the palette from the image into palette memory*/
+    memcpy16_dma((unsigned short*) bg_palette, (unsigned short*) MissionCompleteScreen_palette, PALETTE_SIZE);
+
+    /* load the image into char block 0 */
+    memcpy16_dma((unsigned short*) char_block(0), (unsigned short*) MissionCompleteScreen_data,
+            (MissionCompleteScreen_width * MissionCompleteScreen_height) / 2);
+
+    /* set all control the bits in this register */
+    *bg0_control = 1 |    /* priority, 0 is highest, 3 is lowest */
+        (0 << 2)  |       /* the char block the image data is stored in */
+        (0 << 6)  |       /* the mosaic flag */
+        (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
+        (21 << 8) |       /* the screen block the tile data is stored in */
+        (1 << 13) |       /* wrapping flag */
+        (0 << 14);        /* bg size, 0 is 256x256 */
+
+    
+
+    /* load the tile data into screen block 21 */
+    /* MAY HAVE TO CHANGE MAP NAME*/
+    memcpy16_dma((unsigned short*) screen_block(21), (unsigned short*) missionCompleteMap, missionCompleteMap_width * missionCompleteMap_height);
+}
+/* function for setting up the scoring tile*/
+/* function to setup score background 0 for this program */
+void setup_score_background() {
+
+    /* have to use the original game palette, only one palette of 256 can be active at a time*/
+    
+   
+    /* load the image into char block 0 */
+    memcpy16_dma((unsigned short*) char_block(3), (unsigned short*) score_background_data,
+            (score_background_width * score_background_height) / 2);
+
+    /* set all control the bits in this register */
+    *bg3_control = 0 |    /* priority, 0 is highest, 3 is lowest */
+        (3 << 2)  |       /* the char block the image data is stored in */
+        (0 << 6)  |       /* the mosaic flag */
+        (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
+        (30 << 8) |       /* the screen block the tile data is stored in */
+        (1 << 13) |       /* wrapping flag */
+        (0 << 14);        /* bg size, 0 is 256x256 */
+
+    
+
+    /* using a manual textMap vs tile editor, because it needs to be updated*/
+        
+
+}
+/* function to set text on the screen at a given location */
+void set_text(char* str, int row, int col) {  
+	/*clear previous text in textMap*/
+	for(int i = 0; i < 32*32; i++){
+		TextMap[i]=0;
+	}                  
+    /* find the index in the texmap to draw to */
+    int index = row * 32 + col;
+
+    /* the first 32 characters are missing from the map (controls etc.) */
+    int missing = 32; 
+
+    
+    /* for each character */
+    while (*str) {
+        /* place this character in the map */
+        TextMap[index] = *str - missing;
+
+        /* move onto the next character */
+        index++;
+        str++;
+    }
+    /* need to call the DMA copy with the manual textMap*/   
+    memcpy16_dma((unsigned short*) screen_block(30), (unsigned short*) TextMap, 32 * 32);
+
+}
+
 
 
 
@@ -704,6 +800,23 @@ void projectile_update(struct Projectile* projectile, struct Samus* samus) {
         
     }*/
 }
+/** this will eventually have to compare score against the computer and player*/
+int playerWon = 0;
+int isThereAWinner (){
+	if(button_pressed(BUTTON_UP)){
+		playerWon = 1;
+		return 1;
+	}
+	return 0; 
+}
+/*update hits and lives*/
+void updateHitsandLives(){
+	char msg[32];
+	
+	/* sprintf is printf for strings*/
+	sprintf(msg, "Hits: %d   Lives: %d",currentHits, currentLives);
+	set_text(msg, 0,0);
+}
 
 void enemy_kill(struct Enemy* enemy) {
     enemy->x = 55;
@@ -735,10 +848,13 @@ int main() {
     }
 
     /* we set the mode to mode 0 with bg0 on */
-    *display_control = MODE0 | BG0_ENABLE | BG1_ENABLE | SPRITE_ENABLE | SPRITE_MAP_1D;
+    *display_control = MODE0 | BG0_ENABLE | BG1_ENABLE | BG3_ENABLE | SPRITE_ENABLE | SPRITE_MAP_1D;
 
     /* setup the background 0 */
     setup_background();
+    
+    /*setup score background*/
+    setup_score_background();
 
     /* setup the sprite image data */
     setup_sprite_image();
@@ -766,6 +882,7 @@ int main() {
     /* set initial scroll to 0 */
     int xscroll = 0;
     int xxscroll = 0;
+    
 
     /* loop forever */
     while (1) {
@@ -803,6 +920,7 @@ int main() {
         if (button_pressed(BUTTON_A)) {
             samus_jump(&samus);
         }
+        updateHitsandLives();
         
         samus_falling(&samus);
         /* wait for vblank before scrolling and moving sprites */
@@ -813,6 +931,23 @@ int main() {
         
         /* delay some */
         delay(300);
+        /*check to see if there is a winner */
+        if(isThereAWinner()){
+        	break;
+        }
+        
+    }
+    
+    /*set the mode to mode 0 with bg0 on*/
+    *display_control = MODE0 | BG0_ENABLE;
+        
+    /*Mission complete screen*/
+    setup_complete_background();
+    while(1){
+        wait_vblank();
+        if(button_pressed(BUTTON_A)){
+        	break;
+        }
     }
 }
 
