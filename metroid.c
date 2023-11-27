@@ -36,8 +36,8 @@ unsigned short TextMap [32*32];
 int calc_offset(int offset, int tileWidth);
 
 /*Hits and Lives*/
-int currentHits=0;
-int currentLives=3;
+int numEnemies = 6;
+int currentLife = 3;
  
 
 /* the tile mode flags needed for display control register */
@@ -516,6 +516,7 @@ struct Enemy {
     int x;
     int y;
     int frame;
+    int alive;
 };
 
 /* struct for projectile */
@@ -533,6 +534,7 @@ struct Projectile {
 void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
     enemy->x = x;
     enemy->y = y;
+    enemy->alive = 1;
     enemy->frame = frame;
     enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
 }
@@ -759,7 +761,8 @@ void samus_falling(struct Samus* samus) {
     }
 }
 
-void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3, struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6, int xscroll) {
+void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3, struct Enemy* enemy4,
+        struct Enemy* enemy5, struct Enemy* enemy6, int xscroll) {
     enemy1->x += xscroll;
     sprite_position(enemy1->sprite, enemy1->x, enemy1->y);
     
@@ -779,28 +782,59 @@ void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3
     sprite_position(enemy6->sprite, enemy6->x, enemy6->y);
 } 
 
-void projectile_update(struct Projectile* projectile, struct Samus* samus) {
-    if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
-        
+void clear_projectile(struct Projectile* projectile) {
         projectile->x = 55;
         projectile->y = -25;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
         projectile->alive = 0;
-        projectile->dx = 0;
-        
+        projectile->dx = 0; 
+}
+
+int enemy_hit(struct Projectile* projectile, struct Enemy* enemy) {
+    
+    if (projectile->x >= enemy->x && projectile->x <= enemy->x + 16) {
+        if (projectile->y >= enemy->y && projectile->y <= enemy->y + 16){  
+            clear_projectile(projectile);
+            enemy->frame = 128;
+            sprite_set_offset(enemy->sprite, enemy->frame);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3,
+        struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6) {
+    
+    if (enemy_hit(projectile, enemy1)) {
+        enemy1->alive = 0;
+
+    } else if (enemy_hit(projectile, enemy2)) {
+        enemy2->alive = 0;
+
+    } else if (enemy_hit(projectile, enemy3)) {
+        enemy3->alive = 0;
+
+    } else if (enemy_hit(projectile, enemy4)) {
+        enemy4->alive = 0;
+    
+    } else if (enemy_hit(projectile, enemy5)) {
+        enemy5->alive = 0;
+
+    } else if (enemy_hit(projectile, enemy6)) {
+        enemy6->alive = 0;
+
+    } else if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
+        clear_projectile(projectile);
+
     } else if (projectile->alive) {
         projectile->x += projectile->dx;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
     
-    }/* else {
-        
-        projectile->x = 55;
-        projectile->y = -25; 
-        sprite_position(projectile->sprite, projectile->x, projectile->y);
-        
-    }*/
+    }   
 }
-/** this will eventually have to compare score against the computer and player*/
+
+/* this will eventually have to compare score against the computer and player*/
 int playerWon = 0;
 int isThereAWinner (){
 	if(button_pressed(BUTTON_UP)){
@@ -809,12 +843,13 @@ int isThereAWinner (){
 	}
 	return 0; 
 }
+
 /*update hits and lives*/
 void updateHitsandLives(){
 	char msg[32];
 	
 	/* sprintf is printf for strings*/
-	sprintf(msg, "Hits: %d   Lives: %d",currentHits, currentLives);
+	sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
 	set_text(msg, 0,0);
 }
 
@@ -822,8 +857,37 @@ void enemy_kill(struct Enemy* enemy) {
     enemy->x = 55;
     enemy->y = -25;
     sprite_position(enemy->sprite, enemy->x, enemy->y);
+   // numEnemies--;
 }
- 
+
+void remove_enemies(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3,
+        struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6) {
+
+    if (!enemy1->alive) {
+        enemy_kill(enemy1);
+        enemy1->alive = 1;
+
+    } else if (!enemy2->alive) {
+        enemy_kill(enemy2);
+        enemy2->alive = 1;
+
+    } else if (!enemy3->alive) {
+        enemy_kill(enemy3);
+        enemy3->alive = 1;
+
+    } else if (!enemy4->alive) {
+        enemy_kill(enemy4);
+        enemy4->alive = 1;
+
+    } else if (!enemy5->alive) {
+        enemy_kill(enemy5);
+        enemy5->alive = 1;
+
+    } else if (!enemy6->alive) {
+        enemy_kill(enemy6);
+        enemy6->alive = 1;
+    }
+}
 
 /* the main function */
 int main() {
@@ -886,10 +950,12 @@ int main() {
 
     /* loop forever */
     while (1) {
+        
+        remove_enemies(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2);
         /* update Samus */
         samus_update(&samus, xxscroll);
         /* update projectile */
-        projectile_update(&projectile, &samus);
+        projectile_update(&projectile, &zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2);
 
         /* now the arrow keys move the koopa */
         if (button_pressed(BUTTON_RIGHT)) {
