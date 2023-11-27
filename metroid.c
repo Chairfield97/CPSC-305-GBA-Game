@@ -686,49 +686,45 @@ void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3
 void projectile_update(struct Projectile* projectile, struct Samus* samus) {
     if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
         
-        if (samus->facing) {
-            projectile->x = samus->x - 4;     
-        } else {
-            projectile->x = samus->x + 4;
-        }
-        
-        projectile->alive = 0;
-        projectile->y = samus->y;
-        projectile->dx = 0;
+        projectile->x = 55;
+        projectile->y = -25;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
+        projectile->alive = 0;
+        projectile->dx = 0;
         
     } else if (projectile->alive) {
         projectile->x += projectile->dx;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
     
-    } else {
-         if (samus->facing) {
-            projectile->x = samus->x - 4;     
-        } else {
-            projectile->x = samus->x + 4;
-        }
+    }/* else {
         
-        projectile->y = samus->y;
+        projectile->x = 55;
+        projectile->y = -25; 
         sprite_position(projectile->sprite, projectile->x, projectile->y);
         
-    }
+    }*/
 }
+
+void enemy_kill(struct Enemy* enemy) {
+    enemy->x = 55;
+    enemy->y = -25;
+    sprite_position(enemy->sprite, enemy->x, enemy->y);
+}
+ 
 
 /* the main function */
 int main() {
-	// ********KAELEEN START***** //
 
 	/*FOR TITLE SCREEN*/
 	/* we set the mode to mode 0 with bg0 on */
     *display_control = MODE0 | BG0_ENABLE;
 
-    /*FOR TITLE SCREEN*/
     /* setup the background 0 */
     setup_title_background();
     /*forever loop for tile screen until 'A' is hit to start game*/
     while(1){
-    	/* if A is pressed, break and go to game play */
-        if (button_pressed(BUTTON_A)) {
+    	/* if START is pressed, break and go to game play */
+        if (button_pressed(BUTTON_START)) {
             break;
         }
         /* wait for vblank */
@@ -737,12 +733,7 @@ int main() {
         /* delay some */
         delay(300);
     }
-    // ********KAELEEN STOP***** //
 
-    
-    
-    
-    
     /* we set the mode to mode 0 with bg0 on */
     *display_control = MODE0 | BG0_ENABLE | BG1_ENABLE | SPRITE_ENABLE | SPRITE_MAP_1D;
 
@@ -792,12 +783,12 @@ int main() {
             }
             
         } else if (button_pressed(BUTTON_LEFT)) {
+
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
                 enemy_move(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2, 2);
-            
-           }
+            }
             
         } else {
             samus_stop(&samus);
