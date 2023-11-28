@@ -515,6 +515,8 @@ struct Enemy {
     struct Sprite* sprite;
     int x;
     int y;
+    int height;
+    int offset;
     int frame;
     int alive;
     int explosion;
@@ -532,9 +534,11 @@ struct Projectile {
 };
 
 /* initialize enemy sprites */
-void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
+void enemy_init(struct Enemy* enemy, int x, int y, int height, int offset,  int frame) {
     enemy->x = x;
     enemy->y = y;
+    enemy->height = height;
+    enemy->offset = offset;
     enemy->alive = 1;
     enemy->explosion = 3;
     enemy->frame = frame;
@@ -799,8 +803,8 @@ void clear_projectile(struct Projectile* projectile) {
 
 int enemy_hit(struct Projectile* projectile, struct Enemy* enemy) {
     
-    if (projectile->x >= enemy->x && projectile->x <= enemy->x + 16) {
-        if (projectile->y >= enemy->y && projectile->y <= enemy->y + 16){  
+    if (projectile->x >= enemy->x && projectile->x <= enemy->x + 8) {
+        if (projectile->y + 16 >= enemy->y + enemy->offset && projectile->y <= enemy->y + enemy->offset + enemy->height){  
             clear_projectile(projectile);
             enemy->frame = 128;
             enemy->alive = 0;
@@ -932,17 +936,17 @@ int main() {
     samus_init(&samus);
     struct Projectile projectile;
     struct Enemy zeela;
-    enemy_init(&zeela, 144, 1, 84);
+    enemy_init(&zeela, 144, 1, 8, 0, 84);
     struct Enemy zeela2;
-    enemy_init(&zeela2, 405, 1, 84);
+    enemy_init(&zeela2, 405, 1, 8, 0, 84);
     struct Enemy zombie;
-    enemy_init(&zombie, 200, 119, 112);
+    enemy_init(&zombie, 200, 119, 32, 0, 112);
     struct Enemy zombie2;
-    enemy_init(&zombie2, 460, 119, 112);
+    enemy_init(&zombie2, 460, 119, 32, 0, 112);
     struct Enemy metroid;
-    enemy_init(&metroid, 485, 48, 144);
+    enemy_init(&metroid, 485, 48, 8, 8, 144);
     struct Enemy metroid2;
-    enemy_init(&metroid2, 225, 48, 144);
+    enemy_init(&metroid2, 225, 48, 8, 8, 144);
 
     /* set initial scroll to 0 */
     int xscroll = 0;
