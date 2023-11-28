@@ -547,8 +547,23 @@ void enemy_init(struct Enemy* enemy, int x, int y, int height, int offset,  int 
 
 /* initialize projectile sprite */
 void projectile_init(struct Projectile* projectile, struct Samus* samus, int frame) {
+   
+    if (samus->move) {
+        if (samus->falling) {
+            projectile->y = samus->y - 3;
+        } else {
+            projectile->y = samus->y - 2;
     
-    projectile->y = samus->y;
+        }
+    } else {
+        if (samus->falling) {
+            projectile->y = samus->y - 2;
+        
+        } else {
+            projectile->y = samus->y;
+        }
+    }
+
     projectile->frame = frame;
     projectile->alive = 1;
     if (samus->facing) {
