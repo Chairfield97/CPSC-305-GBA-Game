@@ -697,12 +697,17 @@ unsigned short tile_lookup(int x, int y, int xscroll, int yscroll,
 
 /* update Samus */
 void samus_update(struct Samus* samus, int xscroll) {
-    /* update  y position and speed if falling */
+    /* update y position and speed if falling */
     if (samus->falling) {
-        samus->y += (samus->yvel >> 8);
-        samus->yvel += samus->gravity;
-   }
+       
+        if (samus->y > 2) {
+            samus->y += (samus->yvel >> 8);
+        } else if (samus->yvel > 0) {
+            samus->y += (samus->yvel >> 8);
+        }
 
+        samus->yvel += samus->gravity;
+    }
     /* check which tile Samus' feet are over */
     unsigned short tile = tile_lookup(samus->x + 8, samus->y + 32, xscroll, 0, map1,
             map1_width, map1_height);
