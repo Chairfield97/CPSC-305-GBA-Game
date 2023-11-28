@@ -857,7 +857,7 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
 /* this will eventually have to compare score against the computer and player*/
 int playerWon = 0;
 int isThereAWinner (){
-	if(button_pressed(BUTTON_UP)){
+	if(button_pressed(BUTTON_START) && numEnemies < 1){
 		playerWon = 1;
 		return 1;
 	}
@@ -867,16 +867,19 @@ int isThereAWinner (){
 /*update hits and lives*/
 void updateHitsandLives(){
 	char msg[32];
-	
-	/* sprintf is printf for strings*/
-	sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
+	if (numEnemies > 0) {
+	    /* sprintf is printf for strings*/
+	    sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
+    } else {
+        sprintf(msg, "Press Start to Finsish");
+    }
 	set_text(msg, 0,0);
 }
 
 void enemy_kill(struct Enemy* enemy) {
     if (enemy->explosion == 0){
         enemy->x = 55;
-        enemy->y = -25;
+        enemy->y = -45;
         sprite_position(enemy->sprite, enemy->x, enemy->y);
         numEnemies--;
         enemy->explosion = 3;
@@ -918,6 +921,9 @@ int main() {
 
     /* setup the background 0 */
     setup_title_background();
+    // setup_score_background();
+    // set_text("Press Start",10,5);
+    
     /*forever loop for tile screen until 'A' is hit to start game*/
     while(1){
     	/* if START is pressed, break and go to game play */
