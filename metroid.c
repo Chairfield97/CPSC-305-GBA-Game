@@ -538,7 +538,7 @@ void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
     enemy->alive = 1;
     enemy->explosion = 3;
     enemy->frame = frame;
-    enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
+    enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 1);
 }
 
 /* initialize projectile sprite */
@@ -1001,10 +1001,12 @@ int main() {
     }
     
     /*set the mode to mode 0 with bg0 on*/
-    *display_control = MODE0 | BG0_ENABLE;
+    *display_control = MODE0 | BG0_ENABLE | BG3_ENABLE;
         
     /*Mission complete screen*/
     setup_complete_background();
+    setup_score_background();
+    set_text("Mission Complete",10,5);
     while(1){
         wait_vblank();
         if(button_pressed(BUTTON_A)){
