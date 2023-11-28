@@ -517,6 +517,7 @@ struct Enemy {
     int y;
     int frame;
     int alive;
+    int explosion;
 };
 
 /* struct for projectile */
@@ -535,6 +536,7 @@ void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
     enemy->x = x;
     enemy->y = y;
     enemy->alive = 1;
+    enemy->explosion = 3;
     enemy->frame = frame;
     enemy->sprite = sprite_init(enemy->x, enemy->y, SIZE_16_32, 0, 0, enemy->frame, 0);
 }
@@ -783,8 +785,8 @@ void enemy_move(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3
 } 
 
 void clear_projectile(struct Projectile* projectile) {
-        projectile->x = 55;
-        projectile->y = -25;
+        projectile->x = 125;
+        projectile->y = -45;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
         projectile->alive = 0;
         projectile->dx = 0; 
@@ -796,6 +798,7 @@ int enemy_hit(struct Projectile* projectile, struct Enemy* enemy) {
         if (projectile->y >= enemy->y && projectile->y <= enemy->y + 16){  
             clear_projectile(projectile);
             enemy->frame = 128;
+            enemy->alive = 0;
             sprite_set_offset(enemy->sprite, enemy->frame);
             return 1;
         }
@@ -807,22 +810,16 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
         struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6) {
     
     if (enemy_hit(projectile, enemy1)) {
-        enemy1->alive = 0;
 
     } else if (enemy_hit(projectile, enemy2)) {
-        enemy2->alive = 0;
 
     } else if (enemy_hit(projectile, enemy3)) {
-        enemy3->alive = 0;
 
     } else if (enemy_hit(projectile, enemy4)) {
-        enemy4->alive = 0;
     
     } else if (enemy_hit(projectile, enemy5)) {
-        enemy5->alive = 0;
 
     } else if (enemy_hit(projectile, enemy6)) {
-        enemy6->alive = 0;
 
     } else if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
         clear_projectile(projectile);
@@ -830,7 +827,6 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
     } else if (projectile->alive) {
         projectile->x += projectile->dx;
         sprite_position(projectile->sprite, projectile->x, projectile->y);
-    
     }   
 }
 
@@ -854,10 +850,16 @@ void updateHitsandLives(){
 }
 
 void enemy_kill(struct Enemy* enemy) {
-    enemy->x = 55;
-    enemy->y = -25;
-    sprite_position(enemy->sprite, enemy->x, enemy->y);
-   // numEnemies--;
+    if (enemy->explosion == 0){
+        enemy->x = 55;
+        enemy->y = -25;
+        sprite_position(enemy->sprite, enemy->x, enemy->y);
+        numEnemies--;
+        enemy->explosion = 3;
+        enemy->alive = 1;
+        return;
+    }
+    enemy->explosion--;
 }
 
 void remove_enemies(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3,
@@ -865,27 +867,21 @@ void remove_enemies(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* en
 
     if (!enemy1->alive) {
         enemy_kill(enemy1);
-        enemy1->alive = 1;
 
     } else if (!enemy2->alive) {
         enemy_kill(enemy2);
-        enemy2->alive = 1;
 
     } else if (!enemy3->alive) {
         enemy_kill(enemy3);
-        enemy3->alive = 1;
 
     } else if (!enemy4->alive) {
         enemy_kill(enemy4);
-        enemy4->alive = 1;
 
     } else if (!enemy5->alive) {
         enemy_kill(enemy5);
-        enemy5->alive = 1;
 
     } else if (!enemy6->alive) {
         enemy_kill(enemy6);
-        enemy6->alive = 1;
     }
 }
 
