@@ -284,6 +284,7 @@ void play_sound(const signed char* sound, int total_samples, int sample_rate, ch
      * divided by the number of machine cycles per vblank (a constant) */
     if (channel == 'A') {
         channel_a_vblanks_remaining = total_samples * ticks_per_sample * (1.0 / CYCLES_PER_BLANK);
+        channel_a_total_vblanks = channel_a_vblanks_remaining;
     } else if (channel == 'B') {
         channel_b_vblanks_remaining = total_samples * ticks_per_sample * (1.0 / CYCLES_PER_BLANK);
     }
