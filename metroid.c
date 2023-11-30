@@ -28,9 +28,12 @@
 
 /* Score background*/
 #include "score_background.h"
+#include "basic_shot_16K_mono.h"
+#include "mus_main_16K_mono.h"
+#include "explosion_16K_mono.h"
+
 /* using a manual map so text can be updated(the original tile map was a const)*/
 unsigned short TextMap [32*32];
-
 
 /**Assembly function declaration*/
 int calc_offset(int offset, int tileWidth);
@@ -39,7 +42,6 @@ int samus_fall(int isFalling);
 /*Hits and Lives*/
 int numEnemies = 6;
 int currentLife = 3;
- 
 
 /* the tile mode flags needed for display control register */
 #define MODE0 0x00
@@ -48,19 +50,16 @@ int currentLife = 3;
 #define BG2_ENABLE 0x400
 #define BG3_ENABLE 0x800
 
-
 /* flags to set sprite handling in display control register */
 #define SPRITE_MAP_2D 0x0
 #define SPRITE_MAP_1D 0x40
 #define SPRITE_ENABLE 0x1000
-
 
 /* the control registers for the four tile layers */
 volatile unsigned short* bg0_control = (volatile unsigned short*) 0x4000008;
 volatile unsigned short* bg1_control = (volatile unsigned short*) 0x400000a;
 volatile unsigned short* bg2_control = (volatile unsigned short*) 0x400000c;
 volatile unsigned short* bg3_control = (volatile unsigned short*) 0x400000e;
-
 
 /* palette is always 256 colors */
 #define PALETTE_SIZE 256
@@ -143,6 +142,21 @@ volatile unsigned short* screen_block(unsigned long block) {
     return (volatile unsigned short*) (0x6000000 + (block * 0x800));
 }
 
+/* define the timer control registers */
+volatile unsigned short* timer0_data = (volatile unsigned short*) 0x4000100;
+volatile unsigned short* timer0_control = (volatile unsigned short*) 0x4000102;
+
+/* make defines for the bit positions of the control register */
+#define TIMER_FREQ_1 0x0
+#define TIMER_FREQ_64 0x2
+#define TIMER_FREQ_256 0x3
+#define TIMER_FREQ_1024 0x4
+#define TIMER_ENABLE 0x80
+
+/* the GBA clock speed is fixed at this rate */
+#define CLOCK 16777216
+#define CYCLES_PER_BLANK 280806
+
 /* flag for turning on DMA */
 #define DMA_ENABLE 0x80000000
 
@@ -150,20 +164,134 @@ volatile unsigned short* screen_block(unsigned long block) {
 #define DMA_16 0x00000000
 #define DMA_32 0x04000000
 
+/* this causes the DMA destination to be the same each time rather than increment */
+#define DMA_DEST_FIXED 0x400000
+
+/* this causes the DMA to repeat the transfer automatically on some interval */
+#define DMA_REPEAT 0x2000000
+
+/* this causes the DMA repeat interval to be synced with timer 0 */
+#define DMA_SYNC_TO_TIMER 0x30000000
+
+/* pointers to the DMA source/dest locations and control registers */
+volatile unsigned int* dma1_source = (volatile unsigned int*) 0x40000BC;
+volatile unsigned int* dma1_destination = (volatile unsigned int*) 0x40000C0;
+volatile unsigned int* dma1_control = (volatile unsigned int*) 0x40000C4;
+
+volatile unsigned int* dma2_source = (volatile unsigned int*) 0x40000C8;
+volatile unsigned int* dma2_destination = (volatile unsigned int*) 0x40000CC;
+volatile unsigned int* dma2_control = (volatile unsigned int*) 0x40000D0;
+
 /* pointer to the DMA source location */
-volatile unsigned int* dma_source = (volatile unsigned int*) 0x40000D4;
+volatile unsigned int* dma3_source = (volatile unsigned int*) 0x40000D4;
 
 /* pointer to the DMA destination location */
-volatile unsigned int* dma_destination = (volatile unsigned int*) 0x40000D8;
+volatile unsigned int* dma3_destination = (volatile unsigned int*) 0x40000D8;
 
 /* pointer to the DMA count/control */
-volatile unsigned int* dma_count = (volatile unsigned int*) 0x40000DC;
+volatile unsigned int* dma3_control = (volatile unsigned int*) 0x40000DC;
 
 /* copy data using DMA */
 void memcpy16_dma(unsigned short* dest, unsigned short* source, int amount) {
-    *dma_source = (unsigned int) source;
-    *dma_destination = (unsigned int) dest;
-    *dma_count = amount | DMA_16 | DMA_ENABLE;
+    *dma3_source = (unsigned int) source;
+    *dma3_destination = (unsigned int) dest;
+    *dma3_control = amount | DMA_16 | DMA_ENABLE;
+}
+
+/* the global interrupt enable register */
+volatile unsigned short* interrupt_enable = (unsigned short*) 0x4000208;
+
+/* this register stores the individual interrupts we want */
+volatile unsigned short* interrupt_selection = (unsigned short*) 0x4000200;
+
+/* this registers stores which interrupts if any occured */
+volatile unsigned short* interrupt_state = (unsigned short*) 0x4000202;
+
+/* the address of the function to call when an interrupt occurs */
+volatile unsigned int* interrupt_callback = (unsigned int*) 0x3007FFC;
+
+/* this register needs a bit set to tell the hardware to send the vblank interrupt */
+volatile unsigned short* display_interrupts = (unsigned short*) 0x4000004;
+
+/* the interrupts are identified by number, we only care about this one */
+#define INTERRUPT_VBLANK 0x1
+
+/* allows turning on and off sound for the GBA altogether */
+volatile unsigned short* master_sound = (volatile unsigned short*) 0x4000084;
+#define SOUND_MASTER_ENABLE 0x80
+
+/* has various bits for controlling the direct sound channels */
+volatile unsigned short* sound_control = (volatile unsigned short*) 0x4000082;
+
+/* bit patterns for the sound control register */
+#define SOUND_A_RIGHT_CHANNEL 0x100
+#define SOUND_A_LEFT_CHANNEL 0x200
+#define SOUND_A_FIFO_RESET 0x800
+#define SOUND_B_RIGHT_CHANNEL 0x1000
+#define SOUND_B_LEFT_CHANNEL 0x2000
+#define SOUND_B_FIFO_RESET 0x8000
+
+/* the location of where sound samples are placed for each channel */
+volatile unsigned char* fifo_buffer_a  = (volatile unsigned char*) 0x40000A0;
+volatile unsigned char* fifo_buffer_b  = (volatile unsigned char*) 0x40000A4;
+
+/* global variables to keep track of how much longer the sounds are to play */
+unsigned int channel_a_vblanks_remaining = 0;
+unsigned int channel_a_total_vblanks = 0;
+unsigned int channel_b_vblanks_remaining = 0;
+
+/* play a sound with a number of samples, and sample rate on one channel 'A' or 'B' */
+void play_sound(const signed char* sound, int total_samples, int sample_rate, char channel) {
+    /* start by disabling the timer and dma controller (to reset a previous sound) */
+    *timer0_control = 0;
+    if (channel == 'A') {
+        *dma1_control = 0;
+    } else if (channel == 'B') {
+        *dma2_control = 0;
+    }
+
+    /* output to both sides and reset the FIFO */
+    if (channel == 'A') {
+        *sound_control |= SOUND_A_RIGHT_CHANNEL | SOUND_A_LEFT_CHANNEL | SOUND_A_FIFO_RESET;
+    } else if (channel == 'B') {
+        *sound_control |= SOUND_B_RIGHT_CHANNEL | SOUND_B_LEFT_CHANNEL | SOUND_B_FIFO_RESET;
+    }
+
+    /* enable all sound */
+    *master_sound = SOUND_MASTER_ENABLE;
+
+    /* set the dma channel to transfer from the sound array to the sound buffer */
+    if (channel == 'A') {
+        *dma1_source = (unsigned int) sound;
+        *dma1_destination = (unsigned int) fifo_buffer_a;
+        *dma1_control = DMA_DEST_FIXED | DMA_REPEAT | DMA_32 | DMA_SYNC_TO_TIMER | DMA_ENABLE;
+    } else if (channel == 'B') {
+        *dma2_source = (unsigned int) sound;
+        *dma2_destination = (unsigned int) fifo_buffer_b;
+        *dma2_control = DMA_DEST_FIXED | DMA_REPEAT | DMA_32 | DMA_SYNC_TO_TIMER | DMA_ENABLE;
+    }
+
+    /* set the timer so that it increments once each time a sample is due
+     * we divide the clock (ticks/second) by the sample rate (samples/second)
+     * to get the number of ticks/samples */
+    unsigned short ticks_per_sample = CLOCK / sample_rate;
+
+    /* the timers all count up to 65536 and overflow at that point, so we count up to that
+     * now the timer will trigger each time we need a sample, and cause DMA to give it one! */
+    *timer0_data = 65536 - ticks_per_sample;
+
+    /* determine length of playback in vblanks
+     * this is the total number of samples, times the number of clock ticks per sample,
+     * divided by the number of machine cycles per vblank (a constant) */
+    if (channel == 'A') {
+        channel_a_vblanks_remaining = total_samples * ticks_per_sample * (1.0 / CYCLES_PER_BLANK);
+        channel_a_total_vblanks = channel_a_vblanks_remaining;
+    } else if (channel == 'B') {
+        channel_b_vblanks_remaining = total_samples * ticks_per_sample * (1.0 / CYCLES_PER_BLANK);
+    }
+
+    /* enable the timer */
+    *timer0_control = TIMER_ENABLE | TIMER_FREQ_1;
 }
 
 /* function to setup background 0 for this program */
@@ -516,6 +644,8 @@ struct Enemy {
     struct Sprite* sprite;
     int x;
     int y;
+    int height;
+    int offset;
     int frame;
     int alive;
     int explosion;
@@ -533,9 +663,11 @@ struct Projectile {
 };
 
 /* initialize enemy sprites */
-void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
+void enemy_init(struct Enemy* enemy, int x, int y, int height, int offset,  int frame) {
     enemy->x = x;
     enemy->y = y;
+    enemy->height = height;
+    enemy->offset = offset;
     enemy->alive = 1;
     enemy->explosion = 3;
     enemy->frame = frame;
@@ -544,8 +676,23 @@ void enemy_init(struct Enemy* enemy, int x, int y, int frame) {
 
 /* initialize projectile sprite */
 void projectile_init(struct Projectile* projectile, struct Samus* samus, int frame) {
+   
+    if (samus->move) {
+        if (samus->falling) {
+            projectile->y = samus->y - 3;
+        } else {
+            projectile->y = samus->y - 2;
     
-    projectile->y = samus->y;
+        }
+    } else {
+        if (samus->falling) {
+            projectile->y = samus->y - 2;
+        
+        } else {
+            projectile->y = samus->y;
+        }
+    }
+
     projectile->frame = frame;
     projectile->alive = 1;
     if (samus->facing) {
@@ -699,12 +846,17 @@ unsigned short tile_lookup(int x, int y, int xscroll, int yscroll,
 
 /* update Samus */
 void samus_update(struct Samus* samus, int xscroll) {
-    /* update  y position and speed if falling */
+    /* update y position and speed if falling */
     if (samus->falling) {
-        samus->y += (samus->yvel >> 8);
-        samus->yvel += samus->gravity;
-   }
+       
+        if (samus->y > 2) {
+            samus->y += (samus->yvel >> 8);
+        } else if (samus->yvel > 0) {
+            samus->y += (samus->yvel >> 8);
+        }
 
+        samus->yvel += samus->gravity;
+    }
     /* check which tile Samus' feet are over */
     unsigned short tile = tile_lookup(samus->x + 8, samus->y + 32, xscroll, 0, map1,
             map1_width, map1_height);
@@ -796,12 +948,13 @@ void clear_projectile(struct Projectile* projectile) {
 
 int enemy_hit(struct Projectile* projectile, struct Enemy* enemy) {
     
-    if (projectile->x >= enemy->x && projectile->x <= enemy->x + 16) {
-        if (projectile->y >= enemy->y && projectile->y <= enemy->y + 16){  
+    if (projectile->x >= enemy->x && projectile->x <= enemy->x + 8) {
+        if (projectile->y + 16 >= enemy->y + enemy->offset && projectile->y <= enemy->y + enemy->offset + enemy->height){  
             clear_projectile(projectile);
             enemy->frame = 128;
             enemy->alive = 0;
             sprite_set_offset(enemy->sprite, enemy->frame);
+            play_sound(explosion_16K_mono, explosion_16K_mono_bytes, 16000, 'B');
             return 1;
         }
     }
@@ -835,8 +988,9 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
 /* Once the Number of Enemies or Number of Lives get to 0, game is over */
 int playerWon = 0;
 int isThereAWinner (){
-	if(currentLife == 0){
-		playerWon = 0;
+
+	if(button_pressed(BUTTON_START) && numEnemies < 1){
+		playerWon = 1;
 		return 1;
 	}
 	else if (numEnemies == 0){
@@ -849,16 +1003,19 @@ int isThereAWinner (){
 /*update hits and lives*/
 void updateHitsandLives(){
 	char msg[32];
-	
-	/* sprintf is printf for strings*/
-	sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
+	if (numEnemies > 0) {
+	    /* sprintf is printf for strings*/
+	    sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
+    } else {
+        sprintf(msg, "Press Start to Finsish");
+    }
 	set_text(msg, 0,0);
 }
 
 void enemy_kill(struct Enemy* enemy) {
     if (enemy->explosion == 0){
         enemy->x = 55;
-        enemy->y = -25;
+        enemy->y = -45;
         sprite_position(enemy->sprite, enemy->x, enemy->y);
         numEnemies--;
         enemy->explosion = 3;
@@ -891,6 +1048,42 @@ void remove_enemies(struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* en
     }
 }
 
+void on_vblank() {
+    /* disable interrupts for now and save current state of interrupt */
+    *interrupt_enable = 0;
+    unsigned short temp = *interrupt_state;
+
+    /* look for vertical refresh */
+    if ((*interrupt_state & INTERRUPT_VBLANK) == INTERRUPT_VBLANK) {
+        
+        /* update channel A */
+        if (channel_a_vblanks_remaining == 0) {
+            /* restart the sound again when it runs out */
+            channel_a_vblanks_remaining = channel_a_total_vblanks;
+            *dma1_control = 0;
+            *dma1_source = (unsigned int) mus_main_16K_mono;
+            *dma1_control = DMA_DEST_FIXED | DMA_REPEAT | DMA_32 |
+                DMA_SYNC_TO_TIMER | DMA_ENABLE;
+        } else {
+            channel_a_vblanks_remaining--;
+        }
+
+        /* update channel B */
+        if (channel_b_vblanks_remaining == 0) {
+            /* disable the sound and DMA transfer on channel B */
+            *sound_control &= ~(SOUND_B_RIGHT_CHANNEL | SOUND_B_LEFT_CHANNEL | SOUND_B_FIFO_RESET);
+            *dma2_control = 0;
+        }
+        else {
+            channel_b_vblanks_remaining--;
+        }
+    }
+
+    /* restore/enable interrupts */
+    *interrupt_state = temp;
+    *interrupt_enable = 1;
+}
+
 /* the main function */
 int main() {
 
@@ -900,8 +1093,20 @@ int main() {
 
     /* setup the background 0 */
     setup_title_background();
-    /*forever loop for tile screen until 'A' is hit to start game*/
-    while(1){
+    // setup_score_background();
+    // set_text("Press Start",10,5);
+
+    *interrupt_enable = 0;
+    *interrupt_callback = (unsigned int) &on_vblank;
+    *interrupt_selection |= INTERRUPT_VBLANK;
+    *display_interrupts |= 0x08;
+    *interrupt_enable = 1;
+
+    *sound_control = 0;
+
+    /*forever loop for tile screen until 'START' is hit to start game*/
+    while(1) {
+
     	/* if START is pressed, break and go to game play */
         if (button_pressed(BUTTON_START)) {
             break;
@@ -933,26 +1138,27 @@ int main() {
     samus_init(&samus);
     struct Projectile projectile;
     struct Enemy zeela;
-    enemy_init(&zeela, 144, 1, 84);
+    enemy_init(&zeela, 144, 1, 8, 0, 84);
     struct Enemy zeela2;
-    enemy_init(&zeela2, 405, 1, 84);
+    enemy_init(&zeela2, 405, 1, 8, 0, 84);
     struct Enemy zombie;
-    enemy_init(&zombie, 200, 119, 112);
+    enemy_init(&zombie, 200, 119, 32, 0, 112);
     struct Enemy zombie2;
-    enemy_init(&zombie2, 460, 119, 112);
+    enemy_init(&zombie2, 460, 119, 32, 0, 112);
     struct Enemy metroid;
-    enemy_init(&metroid, 485, 48, 144);
+    enemy_init(&metroid, 485, 48, 8, 8, 144);
     struct Enemy metroid2;
-    enemy_init(&metroid2, 225, 48, 144);
+    enemy_init(&metroid2, 225, 48, 8, 8, 144);
 
     /* set initial scroll to 0 */
     int xscroll = 0;
     int xxscroll = 0;
     
-
+    play_sound(mus_main_16K_mono, mus_main_16K_mono_bytes, 16000, 'A');
+    
     /* loop forever */
     while (1) {
-        
+        /* clear dead enemies from the screen */        
         remove_enemies(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2);
         /* update Samus */
         samus_update(&samus, xxscroll);
@@ -982,6 +1188,7 @@ int main() {
         /* check for blaster */
         if (button_pressed(BUTTON_B)) {
              projectile_init(&projectile, &samus, 64);
+             play_sound(basic_shot_16K_mono, basic_shot_16K_mono_bytes, 16000, 'B');
         }
 
         /* check for jumping */
@@ -1026,5 +1233,6 @@ int main() {
         	break;
         }
     }
+    return 0;
 }
 
