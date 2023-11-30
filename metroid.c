@@ -1091,7 +1091,6 @@ int main() {
 	/*FOR TITLE SCREEN*/
 	/* we set the mode to mode 0 with bg0 on */
     *display_control = MODE0 | BG0_ENABLE;
-
     /* setup the background 0 */
     setup_title_background();
     // setup_score_background();
