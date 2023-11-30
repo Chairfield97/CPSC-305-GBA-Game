@@ -37,7 +37,7 @@ unsigned short TextMap [32*32];
 
 /**Assembly function declaration*/
 int calc_offset(int offset, int tileWidth);
-int samus_fall(int isFalling);
+int get_index(int row, int col);
 
 /*Hits and Lives*/
 int numEnemies = 6;
@@ -409,9 +409,11 @@ void set_text(char* str, int row, int col) {
 	/*clear previous text in textMap*/
 	for(int i = 0; i < 32*32; i++){
 		TextMap[i]=0;
-	}                  
+	} 
+	/* assembly call to get the index*/                 
     /* find the index in the texmap to draw to */
-    int index = row * 32 + col;
+    int index = get_index(row,col);
+    /*int index = row * 32 + col;*/
 
     /* the first 32 characters are missing from the map (controls etc.) */
     int missing = 32; 
@@ -766,12 +768,11 @@ int samus_right(struct Samus* samus) {
 /* stop Samus from walking left/right */
 void samus_stop(struct Samus* samus) {
     samus->move = 0;
-    samus->frame = samus_fall(samus->falling);
-   /* if (samus->falling) {
+    if (samus->falling) {
         samus->frame = 48;
     } else {
         samus->frame = 0;
-    }*/
+    }
     samus->counter = 7;
     sprite_set_offset(samus->sprite, samus->frame);
 }
