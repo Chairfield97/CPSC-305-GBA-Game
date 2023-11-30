@@ -37,6 +37,7 @@ unsigned short TextMap [32*32];
 
 /**Assembly function declaration*/
 int calc_offset(int offset, int tileWidth);
+int get_index(int row, int col);
 
 /*Hits and Lives*/
 int numEnemies = 6;
@@ -363,7 +364,7 @@ void setup_complete_background() {
             (MissionCompleteScreen_width * MissionCompleteScreen_height) / 2);
 
     /* set all control the bits in this register */
-    *bg0_control = 1 |    /* priority, 0 is highest, 3 is lowest */
+    *bg2_control = 1 |    /* priority, 0 is highest, 3 is lowest */
         (0 << 2)  |       /* the char block the image data is stored in */
         (0 << 6)  |       /* the mosaic flag */
         (1 << 7)  |       /* color mode, 0 is 16 colors, 1 is 256 colors */
@@ -408,9 +409,11 @@ void set_text(char* str, int row, int col) {
 	/*clear previous text in textMap*/
 	for(int i = 0; i < 32*32; i++){
 		TextMap[i]=0;
-	}                  
+	} 
+	/* assembly call to get the index*/                 
     /* find the index in the texmap to draw to */
-    int index = row * 32 + col;
+    int index = get_index(row,col);
+    /*int index = row * 32 + col;*/
 
     /* the first 32 characters are missing from the map (controls etc.) */
     int missing = 32; 
@@ -983,12 +986,17 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
     }   
 }
 
-/* this will eventually have to compare score against the computer and player*/
+/* Once the Number of Enemies or Number of Lives get to 0, game is over */
 int playerWon = 0;
 int isThereAWinner (){
+
 	if(button_pressed(BUTTON_START) && numEnemies < 1){
 		playerWon = 1;
 		return 1;
+	}
+	else if (numEnemies == 0){
+	    playerWon = 1;
+	    return 1;
 	}
 	return 0; 
 }
@@ -1206,13 +1214,20 @@ int main() {
         
     }
     
-    /*set the mode to mode 0 with bg0 on*/
-    *display_control = MODE0 | BG0_ENABLE | BG3_ENABLE;
-        
+    /* If the player wins the Mission Complete screen is shown */
+    /* If player loses, the ending game screen stays */
+ 	/*set the mode to mode 0 with bg0 on*/
+    *display_control = MODE0 | BG2_ENABLE | BG3_ENABLE;
     /*Mission complete screen*/
     setup_complete_background();
     setup_score_background();
-    set_text("Mission Complete",10,5);
+    if (playerWon){
+    	set_text("Mission Complete",10,5);
+    }
+    else{
+    	set_text("Mission Failed",10,5);
+    }
+
     while(1){
         wait_vblank();
         if(button_pressed(BUTTON_A)){
