@@ -433,9 +433,6 @@ void set_text(char* str, int row, int col) {
 
 }
 
-
-
-
 /* just kill time */
 void delay(unsigned int amount) {
     for (int i = 0; i < amount * 10; i++);
@@ -699,11 +696,11 @@ void projectile_init(struct Projectile* projectile, struct Samus* samus, int fra
     projectile->alive = 1;
     if (samus->facing) {
         projectile->x = samus->x - 8;
-        projectile->dx = -2;
+        projectile->dx = -4;
         sprite_set_horizontal_flip(projectile->sprite, 1);
     } else {
         projectile->x = samus->x + 8;
-        projectile->dx = 2;
+        projectile->dx = 4;
         sprite_set_horizontal_flip(projectile->sprite, 0);
     }
     if (projectile->count < 1) {
@@ -962,7 +959,7 @@ int enemy_hit(struct Projectile* projectile, struct Enemy* enemy) {
     return 0;
 }
 
-void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3,
+void projectile_update(struct Projectile* projectile, struct Samus* samus, struct Enemy* enemy1, struct Enemy* enemy2, struct Enemy* enemy3,
         struct Enemy* enemy4, struct Enemy* enemy5, struct Enemy* enemy6) {
     
     if (enemy_hit(projectile, enemy1)) {
@@ -977,7 +974,7 @@ void projectile_update(struct Projectile* projectile, struct Enemy* enemy1, stru
 
     } else if (enemy_hit(projectile, enemy6)) {
 
-    } else if (projectile->x + 12 == 0 || projectile->x + 12 == 1 || projectile->x == SCREEN_WIDTH || projectile->x == SCREEN_WIDTH - 1) {
+    } else if (projectile->x + 12 >= 0 && projectile->x + 12 <= 4 || projectile->x <= SCREEN_WIDTH && projectile->x >= SCREEN_WIDTH - 3) {
         clear_projectile(projectile);
 
     } else if (projectile->alive) {
@@ -1008,15 +1005,15 @@ void updateHitsandLives(){
 	    /* sprintf is printf for strings*/
 	    sprintf(msg, "Enemies: %d   Life: %d", numEnemies, currentLife);
     } else {
-        sprintf(msg, "Press Start to Finsish");
+        sprintf(msg, "Press Start to Finish");
     }
 	set_text(msg, 0,0);
 }
 
 void enemy_kill(struct Enemy* enemy) {
     if (enemy->explosion == 0){
-        enemy->x = 55;
-        enemy->y = -45;
+        enemy->x = 115;
+        enemy->y = -95;
         sprite_position(enemy->sprite, enemy->x, enemy->y);
         numEnemies--;
         enemy->explosion = 3;
@@ -1163,13 +1160,16 @@ int main() {
         /* update Samus */
         samus_update(&samus, xxscroll);
         /* update projectile */
-        projectile_update(&projectile, &zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2);
+        projectile_update(&projectile, &samus, &zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2);
 
         /* now the arrow keys move the koopa */
         if (button_pressed(BUTTON_RIGHT)) {
             if (samus_right(&samus)) {
                 xscroll++;
                 xxscroll += 2;
+                if (projectile.dx < 0) {
+                    projectile.dx = -6;
+                }
                 enemy_move(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2, -2);
             }
             
@@ -1178,11 +1178,19 @@ int main() {
             if (samus_left(&samus)) {
                 xscroll--;
                 xxscroll -= 2;
+                if (projectile.dx > 0) {
+                    projectile.dx = 6;
+                }
                 enemy_move(&zeela, &zeela2, &zombie, &zombie2, &metroid, &metroid2, 2);
             }
             
         } else {
             samus_stop(&samus);
+            if (projectile.dx > 0) {
+                projectile.dx = 4;
+            } else if (projectile.dx < 0) {
+                projectile.dx = -4;
+            }
         }
 
         /* check for blaster */
